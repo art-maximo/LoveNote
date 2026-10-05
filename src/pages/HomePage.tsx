@@ -1,59 +1,51 @@
-import { useState } from 'react';
-import { LogOut } from 'lucide-react';
-import { toast } from 'sonner';
-import { ThemeToggle } from '../components/ui/ThemeToggle';
-import { Spinner } from '../components/ui/Spinner';
+import { Link } from 'react-router-dom';
+import { ChevronRight, ListChecks } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { friendlyError } from '../lib/errors';
+import { useLists } from '../hooks/useLists';
 import { getGreeting } from '../utils/greeting';
 
 export function HomePage() {
-  const { profile, partner, signOut } = useAuth();
-  const [leaving, setLeaving] = useState(false);
+  const { profile, partner } = useAuth();
+  const listsQuery = useLists();
+  const count = listsQuery.data?.length;
 
-  async function handleSignOut() {
-    setLeaving(true);
-    try {
-      await signOut();
-    } catch (error) {
-      toast.error(friendlyError(error, 'Não foi possível sair.'));
-      setLeaving(false);
-    }
+  let listsSummary = 'Carregando...';
+  if (count !== undefined) {
+    listsSummary =
+      count === 0 ? 'Nenhuma lista ainda' : `${count} ${count === 1 ? 'lista' : 'listas'}`;
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-3xl flex-col px-4 py-6">
-      <header className="flex items-center justify-between">
-        <span className="text-lg font-semibold tracking-tight">LoveNote</span>
-        <div className="flex items-center gap-1">
-          <ThemeToggle />
-          <button
-            type="button"
-            onClick={handleSignOut}
-            disabled={leaving}
-            aria-label="Sair"
-            title="Sair"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-stone-500 transition hover:bg-stone-200/70 hover:text-stone-900 disabled:opacity-60 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100"
-          >
-            {leaving ? <Spinner className="h-5 w-5" /> : <LogOut className="h-5 w-5" />}
-          </button>
-        </div>
-      </header>
+    <div>
+      <h1 className="text-3xl font-semibold tracking-tight">
+        {getGreeting()}, {profile?.display_name} ❤️
+      </h1>
+      <p className="mt-3 text-stone-600 dark:text-stone-400">
+        {partner
+          ? `Seu espaço está conectado com ${partner.display_name}.`
+          : 'Seu espaço está pronto.'}
+      </p>
 
-      <main className="flex flex-1 flex-col justify-center py-10">
-        <h1 className="text-3xl font-semibold tracking-tight">
-          {getGreeting()}, {profile?.display_name} ❤️
-        </h1>
-        <p className="mt-3 text-stone-600 dark:text-stone-400">
-          {partner
-            ? `Seu espaço está conectado com ${partner.display_name}.`
-            : 'Seu espaço está pronto.'}
-        </p>
-        <p className="mt-6 rounded-2xl border border-dashed border-stone-300 p-4 text-sm text-stone-500 dark:border-stone-700 dark:text-stone-400">
-          Login funcionando. Listas, tarefas, notas e planejamentos ainda não foram
-          implementados: eles chegam nas próximas fases.
-        </p>
-      </main>
+      <Link
+        to="/listas"
+        className="mt-8 flex items-center gap-4 rounded-2xl border border-stone-200 bg-white p-4 transition hover:border-rose-300 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-rose-500/50"
+      >
+        <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-100 text-rose-500 dark:bg-rose-500/15">
+          <ListChecks className="h-5 w-5" />
+        </span>
+        <span className="flex-1">
+          <span className="block font-medium">Listas</span>
+          <span className="block text-sm text-stone-500 dark:text-stone-400">
+            {listsSummary}
+          </span>
+        </span>
+        <ChevronRight className="h-4 w-4 text-stone-400" />
+      </Link>
+
+      <p className="mt-6 rounded-2xl border border-dashed border-stone-300 p-4 text-sm text-stone-500 dark:border-stone-700 dark:text-stone-400">
+        Tarefas, notas, planejamentos e o dashboard completo ainda não foram
+        implementados: eles chegam nas próximas fases.
+      </p>
     </div>
   );
 }
