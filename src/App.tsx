@@ -5,6 +5,7 @@ import { LoginPage } from './pages/LoginPage';
 import { HomePage } from './pages/HomePage';
 import { ListsPage } from './pages/ListsPage';
 import { ListDetailPage } from './pages/ListDetailPage';
+import { TasksPage } from './pages/TasksPage';
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/listas" element={<ListsPage />} />
           <Route path="/listas/:listId" element={<ListDetailPage />} />
+          <Route path="/tarefas" element={<TasksPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

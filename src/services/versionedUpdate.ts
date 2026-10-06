@@ -5,6 +5,8 @@ interface VersionedRow {
   version: number;
 }
 
+type VersionedTable = 'lists' | 'list_items' | 'tasks';
+
 export type UpdateOutcome<T> =
   | { status: 'ok'; row: T }
   | { status: 'gone' }
@@ -28,18 +30,23 @@ function isSoftDeleted(row: unknown): boolean {
 // Atualização com controle de versão (concorrência otimista).
 // `base` é o registro como a pessoa o viu quando começou a editar.
 export async function updateVersioned<T extends VersionedRow>(
-  table: 'lists' | 'list_items',
+  table: VersionedTable,
   base: T,
   changes: Partial<T>,
   options: UpdateOptions<T> = {},
 ): Promise<UpdateOutcome<T>> {
   let reference: T = base;
 
+  // O client do Supabase aqui não tem tipos gerados do banco, então ele não
+  // consegue validar um objeto genérico. O conteúdo é conferido pelos tipos
+  // de quem chama esta função (ItemChanges, TaskChanges...) e pelo banco.
+  const payload = changes as never;
+
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
     // Só altera se a versão no banco ainda for a que conhecemos.
     const { data, error } = await supabase
       .from(table)
-      .update(changes as never)
+      .update(payload)
       .eq('id', base.id)
       .eq('version', reference.version)
       .select();
@@ -50,7 +57,7 @@ export async function updateVersioned<T extends VersionedRow>(
       return { status: 'ok', row: updated[0] };
     }
 
-    // Nenhuma linha alterada: a versão mudou ou o registro sumiu.
+    // Nenhuma linha alterada: a versão mudou, o registro sumiu ou o banco recusou.
     const { data: current, error: fetchError } = await supabase
       .from(table)
       .select('*')
@@ -60,6 +67,12 @@ export async function updateVersioned<T extends VersionedRow>(
     if (!current || isSoftDeleted(current)) return { status: 'gone' };
 
     const server = current as T;
+
+    // O registro existe e a versão é a mesma, mas nada foi alterado:
+    // o banco (RLS) recusou por falta de permissão. Não é conflito.
+    if (server.version === reference.version) {
+      throw Object.assign(new Error('forbidden'), { code: '42501' });
+    }
 
     if (!options.force) {
       const soft = options.softFields ?? [];

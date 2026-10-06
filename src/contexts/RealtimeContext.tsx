@@ -7,7 +7,7 @@ import { queryKeys } from '../lib/queryKeys';
 import { applyServerRow, removeFromCache } from '../lib/cacheSync';
 import { useAuth } from '../hooks/useAuth';
 import { useWorkspaceId } from '../hooks/useWorkspaceId';
-import type { List, ListItem } from '../types';
+import type { List, ListItem, Task } from '../types';
 import { RealtimeContext } from './realtime-context';
 import type { ConnectionStatus, RealtimeContextValue } from './realtime-context';
 
@@ -35,6 +35,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     let disposed = false;
     const listsKey = queryKeys.lists(workspaceId);
     const itemsKey = queryKeys.listItems(workspaceId);
+    const tasksKey = queryKeys.tasks(workspaceId);
     const filter = `workspace_id=eq.${workspaceId}`;
 
     function upsertItem(row: ListItem): void {
@@ -87,6 +88,24 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
           if (id) removeFromCache(queryClient, itemsKey, id);
         },
       )
+      // Tarefas (exclusão suave: chega como UPDATE com deleted_at preenchido)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tasks', filter },
+        (payload) => {
+          if (payload.eventType === 'DELETE') {
+            const id = (payload.old as { id?: string }).id;
+            if (id) removeFromCache(queryClient, tasksKey, id);
+            return;
+          }
+          const row = payload.new as Task;
+          if (row.deleted_at) {
+            removeFromCache(queryClient, tasksKey, row.id);
+          } else {
+            applyServerRow(queryClient, tasksKey, row);
+          }
+        },
+      )
       // Presença: quem está online agora
       .on('presence', { event: 'sync' }, () => {
         const online = Object.keys(channel.presenceState());
@@ -104,6 +123,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
           // reenviados: buscamos tudo de novo para garantir dados em dia.
           void queryClient.invalidateQueries({ queryKey: listsKey });
           void queryClient.invalidateQueries({ queryKey: itemsKey });
+          void queryClient.invalidateQueries({ queryKey: tasksKey });
 
           if (everConnectedRef.current) {
             setStatus('synced');

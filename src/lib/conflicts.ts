@@ -17,6 +17,8 @@ function formatValue(value: unknown): string {
 interface ConflictInfo {
   partnerName: string;
   field: string;
+  // Texto do campo para a mensagem (ex.: "o prazo"). Se omitido, usa o padrão.
+  fieldLabel?: string;
   mine: unknown;
   theirs: unknown;
   onUseMine: () => void;
@@ -25,7 +27,7 @@ interface ConflictInfo {
 // Aviso que fica na tela até a pessoa escolher. Nada é perdido em silêncio:
 // a versão da outra pessoa já está na tela e a sua só é aplicada se você pedir.
 export function notifyConflict(info: ConflictInfo): void {
-  const label = FIELD_LABELS[info.field] ?? 'este campo';
+  const label = info.fieldLabel ?? FIELD_LABELS[info.field] ?? 'este campo';
 
   toast.warning(`${info.partnerName} alterou ${label} ao mesmo tempo`, {
     description: `Sua versão: "${formatValue(info.mine)}". Versão dela: "${formatValue(info.theirs)}".`,
