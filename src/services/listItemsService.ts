@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
-import type { ItemChanges, ListItem } from '../types';
+import type { ListItem } from '../types';
 
 export async function fetchItems(workspaceId: string): Promise<ListItem[]> {
   const { data, error } = await supabase
@@ -32,18 +32,7 @@ export async function createItem(input: CreateItemInput): Promise<ListItem> {
   return data as ListItem;
 }
 
-// Envia apenas os campos alterados (atualização por campo).
-export async function updateItem(id: string, changes: ItemChanges): Promise<ListItem> {
-  const { data, error } = await supabase
-    .from('list_items')
-    .update(changes)
-    .eq('id', id)
-    .select()
-    .single();
-  if (error) throw error;
-  return data as ListItem;
-}
-
+// (Editar passa por services/versionedUpdate.ts.)
 export async function deleteItem(id: string): Promise<void> {
   const { error } = await supabase.from('list_items').delete().eq('id', id);
   if (error) throw error;

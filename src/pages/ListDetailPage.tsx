@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   DndContext,
@@ -27,6 +27,7 @@ import { useAddItem, useDeleteItem, useItems, useUpdateItem } from '../hooks/use
 import { useDeleteList, useRenameList } from '../hooks/useListMutations';
 import { useLists } from '../hooks/useLists';
 import { friendlyError } from '../lib/errors';
+import type { List } from '../types';
 import { positionBetween } from '../utils/ordering';
 
 export function ListDetailPage() {
@@ -41,6 +42,8 @@ export function ListDetailPage() {
   const updateItem = useUpdateItem();
   const deleteItem = useDeleteItem();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  // A lista como estava quando a pessoa começou a editar o nome.
+  const listBaseRef = useRef<List | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -68,12 +71,13 @@ export function ListDetailPage() {
     if (oldIndex < 0 || newIndex < 0) return;
 
     // Só o item movido é gravado, com uma posição entre os novos vizinhos.
+    const movedItem = items[oldIndex];
     const reordered = arrayMove(items, oldIndex, newIndex);
     const position = positionBetween(
       reordered[newIndex - 1]?.position,
       reordered[newIndex + 1]?.position,
     );
-    updateItem.mutate({ id: String(active.id), changes: { position } });
+    updateItem.mutate({ base: movedItem, changes: { position } });
   }
 
   if (listsQuery.isPending) {
@@ -134,7 +138,12 @@ export function ListDetailPage() {
             value={list.title}
             ariaLabel="Nome da lista"
             className="text-2xl font-semibold tracking-tight"
-            onSave={(title) => renameList.mutate({ id: list.id, title })}
+            onStart={() => {
+              listBaseRef.current = list;
+            }}
+            onSave={(title) =>
+              renameList.mutate({ base: listBaseRef.current ?? list, title })
+            }
           />
           <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">{summary}</p>
         </div>
@@ -185,7 +194,9 @@ export function ListDetailPage() {
                   <ListItemRow
                     key={item.id}
                     item={item}
-                    onChange={(changes) => updateItem.mutate({ id: item.id, changes })}
+                    onChange={(changes, base) =>
+                      updateItem.mutate({ base: base ?? item, changes })
+                    }
                     onDelete={() => deleteItem.mutate(item)}
                   />
                 ))}

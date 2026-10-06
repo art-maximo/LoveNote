@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Check, GripVertical, StickyNote, Trash2 } from 'lucide-react';
@@ -7,12 +7,15 @@ import type { ItemChanges, ListItem } from '../../types';
 
 interface ListItemRowProps {
   item: ListItem;
-  onChange: (changes: ItemChanges) => void;
+  // `base` = o item como estava quando a pessoa começou a editar.
+  onChange: (changes: ItemChanges, base?: ListItem) => void;
   onDelete: () => void;
 }
 
 export function ListItemRow({ item, onChange, onDelete }: ListItemRowProps) {
   const [noteOpen, setNoteOpen] = useState(false);
+  const textBaseRef = useRef<ListItem>(item);
+  const noteBaseRef = useRef<ListItem>(item);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: item.id });
 
@@ -20,6 +23,11 @@ export function ListItemRow({ item, onChange, onDelete }: ListItemRowProps) {
     transform: CSS.Transform.toString(transform),
     transition,
   };
+
+  function openNote() {
+    noteBaseRef.current = item;
+    setNoteOpen(true);
+  }
 
   return (
     <li
@@ -66,7 +74,10 @@ export function ListItemRow({ item, onChange, onDelete }: ListItemRowProps) {
             value={item.text}
             ariaLabel="Texto do item"
             maxLength={500}
-            onSave={(text) => onChange({ text })}
+            onStart={() => {
+              textBaseRef.current = item;
+            }}
+            onSave={(text) => onChange({ text }, textBaseRef.current)}
             className={`text-sm leading-6 ${
               item.is_done ? 'text-stone-400 line-through dark:text-stone-500' : ''
             }`}
@@ -84,7 +95,9 @@ export function ListItemRow({ item, onChange, onDelete }: ListItemRowProps) {
                 const value = event.target.value.trim();
                 setNoteOpen(false);
                 const next = value === '' ? null : value;
-                if (next !== item.note) onChange({ note: next });
+                if (next !== noteBaseRef.current.note) {
+                  onChange({ note: next }, noteBaseRef.current);
+                }
               }}
               className="mt-1 w-full resize-none rounded-lg border border-stone-300 bg-stone-50 px-2.5 py-1.5 text-sm outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-100 dark:border-stone-700 dark:bg-stone-950 dark:focus:ring-rose-400/20"
             />
@@ -92,7 +105,7 @@ export function ListItemRow({ item, onChange, onDelete }: ListItemRowProps) {
             item.note && (
               <button
                 type="button"
-                onClick={() => setNoteOpen(true)}
+                onClick={openNote}
                 title="Editar observação"
                 className="mt-0.5 block w-full whitespace-pre-wrap break-words text-left text-xs text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200"
               >
@@ -105,7 +118,7 @@ export function ListItemRow({ item, onChange, onDelete }: ListItemRowProps) {
         <div className="flex shrink-0 items-center">
           <button
             type="button"
-            onClick={() => setNoteOpen((open) => !open)}
+            onClick={openNote}
             aria-label="Observação"
             title="Observação"
             className={`flex h-9 w-9 items-center justify-center rounded-lg transition hover:bg-stone-100 dark:hover:bg-stone-800 ${

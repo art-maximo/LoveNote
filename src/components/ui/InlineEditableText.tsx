@@ -3,6 +3,8 @@ import { useRef, useState } from 'react';
 interface InlineEditableTextProps {
   value: string;
   onSave: (next: string) => void;
+  // Chamado quando a edição começa (serve para guardar a "versão base").
+  onStart?: () => void;
   ariaLabel: string;
   className?: string;
   maxLength?: number;
@@ -13,6 +15,7 @@ interface InlineEditableTextProps {
 export function InlineEditableText({
   value,
   onSave,
+  onStart,
   ariaLabel,
   className = '',
   maxLength = 200,
@@ -21,11 +24,15 @@ export function InlineEditableText({
   const [draft, setDraft] = useState(value);
   // Evita salvar duas vezes (Enter + perda de foco ao desmontar o campo).
   const finishedRef = useRef(false);
+  // Valor que o campo tinha quando a edição começou.
+  const startValueRef = useRef(value);
 
   function start() {
     finishedRef.current = false;
+    startValueRef.current = value;
     setDraft(value);
     setEditing(true);
+    onStart?.();
   }
 
   function commit() {
@@ -33,7 +40,8 @@ export function InlineEditableText({
     finishedRef.current = true;
     setEditing(false);
     const next = draft.trim();
-    if (next !== '' && next !== value) onSave(next);
+    // Só salva se a pessoa realmente mudou algo em relação ao início da edição.
+    if (next !== '' && next !== startValueRef.current) onSave(next);
   }
 
   function cancel() {

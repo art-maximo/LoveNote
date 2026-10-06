@@ -1,7 +1,10 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { Heart, LogOut } from 'lucide-react';
+import { ConnectionIndicator } from '../components/ConnectionIndicator';
+import { OfflineBanner } from '../components/OfflineBanner';
 import { ThemeToggle } from '../components/ui/ThemeToggle';
 import { Spinner } from '../components/ui/Spinner';
+import { RealtimeProvider } from '../contexts/RealtimeContext';
 import { useAuth } from '../hooks/useAuth';
 import { useSignOut } from '../hooks/useSignOut';
 import { NAV_ITEMS } from './navItems';
@@ -17,7 +20,7 @@ function Brand() {
   );
 }
 
-export function AppLayout() {
+function Shell() {
   const { profile } = useAuth();
   const { leaving, handleSignOut } = useSignOut();
 
@@ -58,18 +61,24 @@ export function AppLayout() {
             </NavLink>
           ))}
         </nav>
-        <div className="mt-auto flex items-center justify-between gap-2 border-t border-stone-200 pt-4 dark:border-stone-800">
-          <span className="truncate text-sm font-medium">{profile?.display_name}</span>
-          <div className="flex shrink-0 items-center">
-            <ThemeToggle />
-            {signOutButton}
+        <div className="mt-auto space-y-3 border-t border-stone-200 pt-4 dark:border-stone-800">
+          <ConnectionIndicator />
+          <div className="flex items-center justify-between gap-2">
+            <span className="truncate text-sm font-medium">{profile?.display_name}</span>
+            <div className="flex shrink-0 items-center">
+              <ThemeToggle />
+              {signOutButton}
+            </div>
           </div>
         </div>
       </aside>
 
       {/* Barra superior (celular) */}
       <header className="sticky top-0 z-10 flex items-center justify-between border-b border-stone-200 bg-stone-50/85 px-4 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] backdrop-blur md:hidden dark:border-stone-800 dark:bg-stone-950/85">
-        <Brand />
+        <div className="space-y-0.5">
+          <Brand />
+          <ConnectionIndicator compact />
+        </div>
         <div className="flex items-center">
           <ThemeToggle />
           {signOutButton}
@@ -77,6 +86,7 @@ export function AppLayout() {
       </header>
 
       <main className="mx-auto w-full max-w-3xl px-4 py-6 pb-28 md:px-8 md:py-10 md:pb-10">
+        <OfflineBanner />
         <Outlet />
       </main>
 
@@ -102,5 +112,14 @@ export function AppLayout() {
         ))}
       </nav>
     </div>
+  );
+}
+
+// O canal de Realtime fica aberto enquanto a pessoa está dentro do app.
+export function AppLayout() {
+  return (
+    <RealtimeProvider>
+      <Shell />
+    </RealtimeProvider>
   );
 }

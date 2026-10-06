@@ -22,18 +22,8 @@ export async function createList(workspaceId: string, title: string): Promise<Li
   return data as List;
 }
 
-export async function renameList(id: string, title: string): Promise<List> {
-  const { data, error } = await supabase
-    .from('lists')
-    .update({ title })
-    .eq('id', id)
-    .select()
-    .single();
-  if (error) throw error;
-  return data as List;
-}
-
 // Exclusão "suave": marca deleted_at em vez de apagar a linha.
+// (Renomear agora passa por services/versionedUpdate.ts.)
 export async function deleteList(id: string): Promise<void> {
   const { error } = await supabase
     .from('lists')
