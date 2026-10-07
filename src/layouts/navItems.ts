@@ -1,4 +1,4 @@
-import { House, ListChecks, ListTodo } from 'lucide-react';
+import { FileText, House, ListChecks, ListTodo } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export interface NavItem {
@@ -8,9 +8,10 @@ export interface NavItem {
   end: boolean;
 }
 
-// Novas seções (Notas, Planos) entram aqui nas próximas fases.
+// Novas seções (Planos) entram aqui na próxima fase.
 export const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Início', icon: House, end: true },
   { to: '/listas', label: 'Listas', icon: ListChecks, end: false },
   { to: '/tarefas', label: 'Tarefas', icon: ListTodo, end: false },
+  { to: '/notas', label: 'Notas', icon: FileText, end: false },
 ];

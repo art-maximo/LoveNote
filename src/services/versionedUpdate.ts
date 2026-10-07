@@ -5,7 +5,7 @@ interface VersionedRow {
   version: number;
 }
 
-type VersionedTable = 'lists' | 'list_items' | 'tasks';
+type VersionedTable = 'lists' | 'list_items' | 'tasks' | 'notes';
 
 export type UpdateOutcome<T> =
   | { status: 'ok'; row: T }

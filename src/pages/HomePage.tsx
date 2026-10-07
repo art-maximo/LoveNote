@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
-import { ChevronRight, ListChecks, ListTodo } from 'lucide-react';
+import { ChevronRight, FileText, ListChecks, ListTodo } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useLists } from '../hooks/useLists';
+import { useNotes } from '../hooks/useNotes';
 import { useTasks } from '../hooks/useTasks';
 import { isOverdue } from '../utils/dates';
 import { getGreeting } from '../utils/greeting';
@@ -38,6 +39,7 @@ export function HomePage() {
   const { profile, partner } = useAuth();
   const listsQuery = useLists();
   const tasksQuery = useTasks();
+  const notesQuery = useNotes();
 
   const listCount = listsQuery.data?.length;
   let listsSummary = 'Carregando...';
@@ -46,6 +48,15 @@ export function HomePage() {
       listCount === 0
         ? 'Nenhuma lista ainda'
         : `${listCount} ${listCount === 1 ? 'lista' : 'listas'}`;
+  }
+
+  const noteCount = notesQuery.data?.length;
+  let notesSummary = 'Carregando...';
+  if (noteCount !== undefined) {
+    notesSummary =
+      noteCount === 0
+        ? 'Nenhuma anotação ainda'
+        : `${noteCount} ${noteCount === 1 ? 'anotação' : 'anotações'}`;
   }
 
   const tasks = tasksQuery.data;
@@ -77,10 +88,11 @@ export function HomePage() {
       <div className="mt-8 grid gap-3 sm:grid-cols-2">
         <SummaryCard to="/tarefas" icon={ListTodo} title="Tarefas" summary={tasksSummary} />
         <SummaryCard to="/listas" icon={ListChecks} title="Listas" summary={listsSummary} />
+        <SummaryCard to="/notas" icon={FileText} title="Anotações" summary={notesSummary} />
       </div>
 
       <p className="mt-6 rounded-2xl border border-dashed border-stone-300 p-4 text-sm text-stone-500 dark:border-stone-700 dark:text-stone-400">
-        Notas, planejamentos e o dashboard completo ainda não foram implementados:
+        Planejamentos e o dashboard completo ainda não foram implementados:
         eles chegam nas próximas fases.
       </p>
     </div>

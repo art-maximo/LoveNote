@@ -71,3 +71,17 @@ export type TaskChanges = Partial<
     | 'allow_partner_edit'
   >
 >;
+
+// Linha da tabela public.notes
+export interface Note {
+  id: string;
+  workspace_id: string;
+  title: string;
+  content: string;
+  created_by: string | null;
+  updated_by: string | null;
+  deleted_at: string | null;
+  version: number;
+  created_at: string;
+  updated_at: string;
+}

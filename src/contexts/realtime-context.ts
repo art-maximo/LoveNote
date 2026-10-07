@@ -10,6 +10,10 @@ export type ConnectionStatus =
 export interface RealtimeContextValue {
   status: ConnectionStatus;
   partnerOnline: boolean;
+  // O que a outra pessoa está vendo agora (ex.: "note:<id>"), ou null.
+  partnerViewing: string | null;
+  // Informa à outra pessoa o que eu estou vendo (null = nada específico).
+  setViewing: (key: string | null) => void;
 }
 
 export const RealtimeContext = createContext<RealtimeContextValue | null>(null);
