@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom';
-import { ChevronRight, FileText, ListChecks, ListTodo } from 'lucide-react';
+import { CalendarDays, ChevronRight, FileText, ListChecks, ListTodo } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useLists } from '../hooks/useLists';
 import { useNotes } from '../hooks/useNotes';
+import { usePlans } from '../hooks/usePlans';
 import { useTasks } from '../hooks/useTasks';
-import { isOverdue } from '../utils/dates';
+import { formatDueDate, isOverdue, todayISO } from '../utils/dates';
 import { getGreeting } from '../utils/greeting';
 
 interface SummaryCardProps {
@@ -40,6 +41,7 @@ export function HomePage() {
   const listsQuery = useLists();
   const tasksQuery = useTasks();
   const notesQuery = useNotes();
+  const plansQuery = usePlans();
 
   const listCount = listsQuery.data?.length;
   let listsSummary = 'Carregando...';
@@ -57,6 +59,23 @@ export function HomePage() {
       noteCount === 0
         ? 'Nenhuma anotação ainda'
         : `${noteCount} ${noteCount === 1 ? 'anotação' : 'anotações'}`;
+  }
+
+  const plans = plansQuery.data;
+  let plansSummary = 'Carregando...';
+  if (plans) {
+    if (plans.length === 0) {
+      plansSummary = 'Nenhum planejamento ainda';
+    } else {
+      plansSummary = `${plans.length} ${plans.length === 1 ? 'planejamento' : 'planejamentos'}`;
+      const today = todayISO();
+      const upcoming = plans
+        .filter((plan) => plan.starts_on !== null && plan.starts_on >= today)
+        .sort((a, b) => (a.starts_on ?? '').localeCompare(b.starts_on ?? ''))[0];
+      if (upcoming?.starts_on) {
+        plansSummary += ` · próximo: ${formatDueDate(upcoming.starts_on)}`;
+      }
+    }
   }
 
   const tasks = tasksQuery.data;
@@ -89,10 +108,11 @@ export function HomePage() {
         <SummaryCard to="/tarefas" icon={ListTodo} title="Tarefas" summary={tasksSummary} />
         <SummaryCard to="/listas" icon={ListChecks} title="Listas" summary={listsSummary} />
         <SummaryCard to="/notas" icon={FileText} title="Anotações" summary={notesSummary} />
+        <SummaryCard to="/planos" icon={CalendarDays} title="Planejamentos" summary={plansSummary} />
       </div>
 
       <p className="mt-6 rounded-2xl border border-dashed border-stone-300 p-4 text-sm text-stone-500 dark:border-stone-700 dark:text-stone-400">
-        Planejamentos e o dashboard completo ainda não foram implementados:
+        O dashboard completo e o histórico de atividades ainda não foram implementados:
         eles chegam nas próximas fases.
       </p>
     </div>

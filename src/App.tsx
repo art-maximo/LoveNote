@@ -8,6 +8,8 @@ import { ListDetailPage } from './pages/ListDetailPage';
 import { TasksPage } from './pages/TasksPage';
 import { NotesPage } from './pages/NotesPage';
 import { NoteDetailPage } from './pages/NoteDetailPage';
+import { PlansPage } from './pages/PlansPage';
+import { PlanDetailPage } from './pages/PlanDetailPage';
 
 export default function App() {
   return (
@@ -21,6 +23,8 @@ export default function App() {
           <Route path="/tarefas" element={<TasksPage />} />
           <Route path="/notas" element={<NotesPage />} />
           <Route path="/notas/:noteId" element={<NoteDetailPage />} />
+          <Route path="/planos" element={<PlansPage />} />
+          <Route path="/planos/:planId" element={<PlanDetailPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

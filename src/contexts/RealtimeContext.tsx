@@ -7,7 +7,7 @@ import { queryKeys } from '../lib/queryKeys';
 import { applyServerRow, removeFromCache } from '../lib/cacheSync';
 import { useAuth } from '../hooks/useAuth';
 import { useWorkspaceId } from '../hooks/useWorkspaceId';
-import type { List, ListItem, Note, Task } from '../types';
+import type { List, ListItem, Note, Plan, Task } from '../types';
 import { RealtimeContext } from './realtime-context';
 import type { ConnectionStatus, RealtimeContextValue } from './realtime-context';
 
@@ -44,6 +44,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     const itemsKey = queryKeys.listItems(workspaceId);
     const tasksKey = queryKeys.tasks(workspaceId);
     const notesKey = queryKeys.notes(workspaceId);
+    const plansKey = queryKeys.plans(workspaceId);
     const filter = `workspace_id=eq.${workspaceId}`;
 
     function upsertItem(row: ListItem): void {
@@ -132,6 +133,24 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
           }
         },
       )
+      // Planejamentos (exclusão suave, como as anotações)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'plans', filter },
+        (payload) => {
+          if (payload.eventType === 'DELETE') {
+            const id = (payload.old as { id?: string }).id;
+            if (id) removeFromCache(queryClient, plansKey, id);
+            return;
+          }
+          const row = payload.new as Plan;
+          if (row.deleted_at) {
+            removeFromCache(queryClient, plansKey, row.id);
+          } else {
+            applyServerRow(queryClient, plansKey, row);
+          }
+        },
+      )
       // Presença: quem está online e o que está vendo
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState<PresenceMeta>();
@@ -160,6 +179,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
           void queryClient.invalidateQueries({ queryKey: itemsKey });
           void queryClient.invalidateQueries({ queryKey: tasksKey });
           void queryClient.invalidateQueries({ queryKey: notesKey });
+          void queryClient.invalidateQueries({ queryKey: plansKey });
 
           if (everConnectedRef.current) {
             setStatus('synced');

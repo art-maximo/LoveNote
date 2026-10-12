@@ -1,10 +1,12 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface LiveFieldProps {
   value: string;
   onCommit: (next: string) => void;
   // Chamado quando a pessoa começa a editar (serve para guardar a "versão base").
   onFocusStart?: () => void;
+  // Chamado quando a pessoa sai do campo (depois de salvar, se houve alteração).
+  onFocusEnd?: () => void;
   ariaLabel: string;
   multiline?: boolean;
   maxLength?: number;
@@ -26,6 +28,7 @@ export function LiveField({
   value,
   onCommit,
   onFocusStart,
+  onFocusEnd,
   ariaLabel,
   multiline = false,
   maxLength,
@@ -35,21 +38,48 @@ export function LiveField({
   className = '',
 }: LiveFieldProps) {
   const [draft, setDraft] = useState<string | null>(null);
+  const draftRef = useRef<string | null>(null);
   const startRef = useRef(value);
   const shown = draft ?? value;
 
+  // Sempre apontam para as versões mais recentes (usadas ao desmontar).
+  const commitRef = useRef(onCommit);
+  const allowEmptyRef = useRef(allowEmpty);
+  useEffect(() => {
+    commitRef.current = onCommit;
+    allowEmptyRef.current = allowEmpty;
+  });
+
+  function updateDraft(next: string | null) {
+    draftRef.current = next;
+    setDraft(next);
+  }
+
+  // Rede de proteção: se o campo sumir da tela no meio da digitação (por exemplo,
+  // a outra pessoa removeu o item), o que foi digitado não se perde em silêncio.
+  useEffect(() => {
+    return () => {
+      const pending = draftRef.current;
+      if (pending === null) return;
+      const next = pending.trim();
+      if (next === startRef.current.trim()) return;
+      if (next === '' && !allowEmptyRef.current) return;
+      commitRef.current(next);
+    };
+  }, []);
+
   function handleFocus() {
     startRef.current = value;
-    setDraft(value);
+    updateDraft(value);
     onFocusStart?.();
   }
 
   function handleBlur() {
     const next = (draft ?? value).trim();
-    setDraft(null);
-    if (next === startRef.current.trim()) return;
-    if (next === '' && !allowEmpty) return;
-    onCommit(next);
+    updateDraft(null);
+    const changed = next !== startRef.current.trim() && (next !== '' || allowEmpty);
+    if (changed) onCommit(next);
+    onFocusEnd?.();
   }
 
   if (multiline) {
@@ -63,7 +93,7 @@ export function LiveField({
         disabled={disabled}
         onFocus={handleFocus}
         onBlur={handleBlur}
-        onChange={(event) => setDraft(event.target.value)}
+        onChange={(event) => updateDraft(event.target.value)}
         className={`${baseClass} resize-none ${className}`}
       />
     );
@@ -79,7 +109,7 @@ export function LiveField({
       disabled={disabled}
       onFocus={handleFocus}
       onBlur={handleBlur}
-      onChange={(event) => setDraft(event.target.value)}
+      onChange={(event) => updateDraft(event.target.value)}
       onKeyDown={(event) => {
         if (event.key === 'Enter') {
           event.preventDefault();

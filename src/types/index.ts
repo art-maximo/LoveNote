@@ -85,3 +85,19 @@ export interface Note {
   created_at: string;
   updated_at: string;
 }
+
+// Linha da tabela public.plans. O formato de "data" depende do "type".
+export interface Plan {
+  id: string;
+  workspace_id: string;
+  type: string;
+  title: string;
+  data: Record<string, unknown>;
+  starts_on: string | null; // formato AAAA-MM-DD
+  created_by: string | null;
+  updated_by: string | null;
+  deleted_at: string | null;
+  version: number;
+  created_at: string;
+  updated_at: string;
+}

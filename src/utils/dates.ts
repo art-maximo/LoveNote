@@ -44,6 +44,20 @@ export function isOverdue(dueDate: string | null, done: boolean): boolean {
   return dueDate !== null && !done && dueDate < todayISO();
 }
 
+// Quantos dias faltam de hoje até a data (negativo se já passou).
+export function daysUntil(iso: string): number {
+  return Math.round(
+    (parseISODate(iso).getTime() - parseISODate(todayISO()).getTime()) / 86_400_000,
+  );
+}
+
+// Noites entre duas datas (volta menos ida).
+export function nightsBetween(startIso: string, endIso: string): number {
+  return Math.round(
+    (parseISODate(endIso).getTime() - parseISODate(startIso).getTime()) / 86_400_000,
+  );
+}
+
 // Data e hora de um timestamp do banco, ex.: "12 de out., 14:30".
 export function formatDateTime(timestamp: string): string {
   return new Date(timestamp).toLocaleString('pt-BR', {
