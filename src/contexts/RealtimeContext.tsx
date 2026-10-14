@@ -5,9 +5,11 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabaseClient';
 import { queryKeys } from '../lib/queryKeys';
 import { applyServerRow, removeFromCache } from '../lib/cacheSync';
+import { applyActivityRow } from '../lib/activitySync';
 import { useAuth } from '../hooks/useAuth';
 import { useWorkspaceId } from '../hooks/useWorkspaceId';
 import type { List, ListItem, Note, Plan, Task } from '../types';
+import type { Activity } from '../types/activity';
 import { RealtimeContext } from './realtime-context';
 import type { ConnectionStatus, RealtimeContextValue } from './realtime-context';
 
@@ -45,6 +47,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     const tasksKey = queryKeys.tasks(workspaceId);
     const notesKey = queryKeys.notes(workspaceId);
     const plansKey = queryKeys.plans(workspaceId);
+    const activitiesKey = queryKeys.activities(workspaceId);
     const filter = `workspace_id=eq.${workspaceId}`;
 
     function upsertItem(row: ListItem): void {
@@ -151,6 +154,21 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
           }
         },
       )
+      // Atividades: são criadas (e, em edições repetidas, renovadas) pelo banco
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'activities', filter },
+        (payload) => {
+          applyActivityRow(queryClient, activitiesKey, payload.new as Activity);
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'activities', filter },
+        (payload) => {
+          applyActivityRow(queryClient, activitiesKey, payload.new as Activity);
+        },
+      )
       // Presença: quem está online e o que está vendo
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState<PresenceMeta>();
@@ -180,6 +198,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
           void queryClient.invalidateQueries({ queryKey: tasksKey });
           void queryClient.invalidateQueries({ queryKey: notesKey });
           void queryClient.invalidateQueries({ queryKey: plansKey });
+          void queryClient.invalidateQueries({ queryKey: activitiesKey });
 
           if (everConnectedRef.current) {
             setStatus('synced');

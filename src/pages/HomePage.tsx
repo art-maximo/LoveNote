@@ -1,120 +1,80 @@
-import { Link } from 'react-router-dom';
-import { CalendarDays, ChevronRight, FileText, ListChecks, ListTodo } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import {
+  PendingTasksCard,
+  RecentActivityCard,
+  RecentDoneCard,
+  RecentListsCard,
+  RecentNotesCard,
+  UpcomingPlansCard,
+} from '../components/dashboard/DashboardCards';
+import { useActivities } from '../hooks/useActivities';
 import { useAuth } from '../hooks/useAuth';
-import { useLists } from '../hooks/useLists';
-import { useNotes } from '../hooks/useNotes';
 import { usePlans } from '../hooks/usePlans';
 import { useTasks } from '../hooks/useTasks';
-import { formatDueDate, isOverdue, todayISO } from '../utils/dates';
+import { actorLabel, describeActivity } from '../lib/activities';
+import { isOverdue, todayISO } from '../utils/dates';
 import { getGreeting } from '../utils/greeting';
+import { plural } from '../utils/plural';
+import { formatRelative } from '../utils/relativeTime';
 
-interface SummaryCardProps {
-  to: string;
-  icon: LucideIcon;
-  title: string;
-  summary: string;
-}
+// "Vocês têm 7 tarefas pendentes e 2 planejamentos próximos. 2 estão atrasadas."
+function buildSummary(pending: number, overdue: number, upcoming: number): string {
+  const parts: string[] = [];
+  if (pending > 0) parts.push(plural(pending, 'tarefa pendente', 'tarefas pendentes'));
+  if (upcoming > 0) {
+    parts.push(plural(upcoming, 'planejamento próximo', 'planejamentos próximos'));
+  }
+  if (parts.length === 0) return 'Tudo em dia por aqui.';
 
-function SummaryCard({ to, icon: Icon, title, summary }: SummaryCardProps) {
-  return (
-    <Link
-      to={to}
-      className="flex items-center gap-4 rounded-2xl border border-stone-200 bg-white p-4 transition hover:border-rose-300 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-rose-500/50"
-    >
-      <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-100 text-rose-500 dark:bg-rose-500/15">
-        <Icon className="h-5 w-5" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block font-medium">{title}</span>
-        <span className="block truncate text-sm text-stone-500 dark:text-stone-400">
-          {summary}
-        </span>
-      </span>
-      <ChevronRight className="h-4 w-4 shrink-0 text-stone-400" />
-    </Link>
-  );
+  let text = `Vocês têm ${parts.join(' e ')}.`;
+  if (overdue > 0) text += ` ${plural(overdue, 'está atrasada', 'estão atrasadas')}.`;
+  return text;
 }
 
 export function HomePage() {
   const { profile, partner } = useAuth();
-  const listsQuery = useLists();
   const tasksQuery = useTasks();
-  const notesQuery = useNotes();
   const plansQuery = usePlans();
-
-  const listCount = listsQuery.data?.length;
-  let listsSummary = 'Carregando...';
-  if (listCount !== undefined) {
-    listsSummary =
-      listCount === 0
-        ? 'Nenhuma lista ainda'
-        : `${listCount} ${listCount === 1 ? 'lista' : 'listas'}`;
-  }
-
-  const noteCount = notesQuery.data?.length;
-  let notesSummary = 'Carregando...';
-  if (noteCount !== undefined) {
-    notesSummary =
-      noteCount === 0
-        ? 'Nenhuma anotação ainda'
-        : `${noteCount} ${noteCount === 1 ? 'anotação' : 'anotações'}`;
-  }
-
-  const plans = plansQuery.data;
-  let plansSummary = 'Carregando...';
-  if (plans) {
-    if (plans.length === 0) {
-      plansSummary = 'Nenhum planejamento ainda';
-    } else {
-      plansSummary = `${plans.length} ${plans.length === 1 ? 'planejamento' : 'planejamentos'}`;
-      const today = todayISO();
-      const upcoming = plans
-        .filter((plan) => plan.starts_on !== null && plan.starts_on >= today)
-        .sort((a, b) => (a.starts_on ?? '').localeCompare(b.starts_on ?? ''))[0];
-      if (upcoming?.starts_on) {
-        plansSummary += ` · próximo: ${formatDueDate(upcoming.starts_on)}`;
-      }
-    }
-  }
+  const activitiesQuery = useActivities();
 
   const tasks = tasksQuery.data;
-  let tasksSummary = 'Carregando...';
-  if (tasks) {
+  const plans = plansQuery.data;
+
+  let summary = 'Carregando...';
+  if (tasks && plans) {
+    const today = todayISO();
     const pending = tasks.filter((task) => !task.is_done);
     const overdue = pending.filter((task) => isOverdue(task.due_date, task.is_done)).length;
-    if (pending.length === 0) {
-      tasksSummary = 'Nenhuma pendente';
-    } else {
-      tasksSummary = `${pending.length} ${pending.length === 1 ? 'pendente' : 'pendentes'}`;
-      if (overdue > 0) {
-        tasksSummary += ` · ${overdue} ${overdue === 1 ? 'atrasada' : 'atrasadas'}`;
-      }
-    }
+    const upcoming = plans.filter(
+      (plan) => plan.starts_on !== null && plan.starts_on >= today,
+    ).length;
+    summary = buildSummary(pending.length, overdue, upcoming);
   }
+
+  const lastActivity = activitiesQuery.data?.[0];
 
   return (
     <div>
       <h1 className="text-3xl font-semibold tracking-tight">
         {getGreeting()}, {profile?.display_name} ❤️
       </h1>
-      <p className="mt-3 text-stone-600 dark:text-stone-400">
-        {partner
-          ? `Seu espaço está conectado com ${partner.display_name}.`
-          : 'Seu espaço está pronto.'}
-      </p>
+      <p className="mt-3 text-stone-600 dark:text-stone-400">{summary}</p>
 
-      <div className="mt-8 grid gap-3 sm:grid-cols-2">
-        <SummaryCard to="/tarefas" icon={ListTodo} title="Tarefas" summary={tasksSummary} />
-        <SummaryCard to="/listas" icon={ListChecks} title="Listas" summary={listsSummary} />
-        <SummaryCard to="/notas" icon={FileText} title="Anotações" summary={notesSummary} />
-        <SummaryCard to="/planos" icon={CalendarDays} title="Planejamentos" summary={plansSummary} />
+      {lastActivity && (
+        <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
+          <span className="font-medium text-stone-600 dark:text-stone-300">Última atividade:</span>{' '}
+          {actorLabel(lastActivity.actor_id, profile, partner)}{' '}
+          {describeActivity(lastActivity)} · {formatRelative(lastActivity.created_at)}
+        </p>
+      )}
+
+      <div className="mt-8 grid gap-4 md:grid-cols-2">
+        <PendingTasksCard />
+        <UpcomingPlansCard />
+        <RecentDoneCard />
+        <RecentListsCard />
+        <RecentNotesCard />
+        <RecentActivityCard />
       </div>
-
-      <p className="mt-6 rounded-2xl border border-dashed border-stone-300 p-4 text-sm text-stone-500 dark:border-stone-700 dark:text-stone-400">
-        O dashboard completo e o histórico de atividades ainda não foram implementados:
-        eles chegam nas próximas fases.
-      </p>
     </div>
   );
 }
